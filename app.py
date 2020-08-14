@@ -3,16 +3,20 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, Float
 from flask_marshmallow import Marshmallow
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token
 
 
 app = Flask(__name__)
 basedir = path.abspath(path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + path.join(basedir, 'planet.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# TODO change this
+app.config['JWT_SECRET_KEY'] = 'super-secret'
 
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
+jwt = JWTManager(app)
 
 
 @app.cli.command('db_create')
@@ -101,6 +105,23 @@ def register():
 
         return jsonify(message='User created successfully'), 201
 
+
+@app.route('/login', methods=['POST'])
+def login():
+    if request.is_json:
+        email = request.json['email']
+        password = request.json['password']
+    else:
+        email = request.form['email']
+        password= request.form['password']
+
+    user = User.query.filter_by(email=email, password=password).first()
+
+    if user:
+        access_token = create_access_token(identity=email)
+        return jsonify(message='Login succeeded', access_token=access_token), 200
+    else:
+        return jsonify(message='Bad email or password'), 401
 
 # Database Models
 class User(db.Model):
