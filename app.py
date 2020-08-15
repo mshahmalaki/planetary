@@ -43,7 +43,7 @@ def db_drop():
 def db_seed():
     mercury = Planet(
         name='Mercury',
-        type='Class D',
+        category='Class D',
         home_star='Sol',
         mass=3.258e23,
         radius=1516,
@@ -51,7 +51,7 @@ def db_seed():
     )
     venus = Planet(
         name='Venus',
-        type='Class K',
+        category='Class K',
         home_star='Sol',
         mass=4.867e24,
         radius=3760,
@@ -59,7 +59,7 @@ def db_seed():
     )
     earth = Planet(
         name='Earth',
-        type='Class M',
+        category='Class M',
         home_star='Sol',
         mass=5.972e24,
         radius=3959,
@@ -157,6 +157,33 @@ def planet_details(planet_id: int):
         return jsonify(message="The planet does not exist"), 404
 
 
+@app.route('/add_planet', methods=['POST'])
+@jwt_required
+def add_planet():
+    name = request.form['name']
+    planet = Planet.query.filter_by(name=name).first()
+    if planet:
+        return jsonify(message="There is already a planet by that name"), 409
+    else:
+        category = request.form['category']
+        home_star = request.form['home_star']
+        mass = float(request.form['mass'])
+        radius = float(request.form['radius'])
+        distance = float(request.form['distance'])
+
+        new_planet = Planet(
+            name=name,
+            category=category,
+            home_star=home_star,
+            mass=mass,
+            radius=radius,
+            distance=distance
+        )
+        db.session.add(new_planet)
+        db.session.commit()
+        return jsonify(message="You add a planet"), 201
+
+
 # Database Models
 class User(db.Model):
     __tablename__ = 'users'
@@ -182,7 +209,7 @@ class Planet(db.Model):
     __tablename__ = 'planets'
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    type = Column(String)
+    category = Column(String)
     home_star = Column(String)
     mass = Column(Float)
     radius = Column(Float)
@@ -194,7 +221,7 @@ class PlanetSchema(ma.Schema):
         fields = (
             'id',
             'name',
-            'type',
+            'category',
             'home_star',
             'mass',
             'radius',
