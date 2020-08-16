@@ -3,7 +3,7 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, Float
 from flask_marshmallow import Marshmallow
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from flask_mail import Mail, Message
 
 
@@ -13,7 +13,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + path.join(basedir, 'plane
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # TODO change this
 app.config['JWT_SECRET_KEY'] = 'super-secret'
-app.config['MAIL_SERVER']= environ.get('MAIL_SERVER')
+app.config['MAIL_SERVER'] = environ.get('MAIL_SERVER')
 app.config['MAIL_PORT'] = environ.get('MAIL_PORT')
 app.config['MAIL_USERNAME'] = environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = environ.get('MAIL_PASSWORD')
@@ -121,7 +121,7 @@ def login():
         password = request.json['password']
     else:
         email = request.form['email']
-        password= request.form['password']
+        password = request.form['password']
 
     user = User.query.filter_by(email=email, password=password).first()
 
@@ -160,6 +160,7 @@ def planet_details(planet_id: int):
 @app.route('/add_planet', methods=['POST'])
 @jwt_required
 def add_planet():
+    current_user = get_jwt_identity()
     name = request.form['name']
     planet = Planet.query.filter_by(name=name).first()
     if planet:
@@ -181,12 +182,16 @@ def add_planet():
         )
         db.session.add(new_planet)
         db.session.commit()
-        return jsonify(message="You add a planet"), 201
+        return jsonify(
+            logged_in_as=current_user,
+            message="You add a planet"
+        ), 201
 
 
 @app.route('/update_planet', methods=['PUT'])
 @jwt_required
 def update_planet():
+    current_user = get_jwt_identity()
     planet_id = int(request.form['id'])
     planet = Planet.query.filter_by(id=planet_id).first()
     if planet:
@@ -198,7 +203,10 @@ def update_planet():
         planet.distance = float(request.form['distance'])
 
         db.session.commit()
-        return jsonify(message="The information of planet Updated"), 202
+        return jsonify(
+            logged_in_as=current_user,
+            message="The information of planet Updated"
+        ), 202
     else:
         return jsonify(message="That planet does not exist"), 404
 
@@ -206,11 +214,15 @@ def update_planet():
 @app.route('/remove_planet/<int:planet_id>', methods=['DELETE'])
 @jwt_required
 def remove_planet(planet_id: int):
+    current_user = get_jwt_identity()
     planet = Planet.query.filter_by(id=planet_id).first()
     if planet:
         db.session.delete(planet)
         db.session.commit()
-        return jsonify(message="You deleted a planet"), 202
+        return jsonify(
+            logged_in_as=current_user,
+            message="You deleted a planet"
+        ), 202
     else:
         return jsonify(message="The planet does not exist"), 404
 
